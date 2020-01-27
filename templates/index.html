@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Employee Records</title>
+    <meta charset="UTF-8">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.20/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.1.6/css/fixedHeader.dataTables.min.css">
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js" type="text/javascript"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <script src='https://cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js'></script>
+
+</head>
+<body>
+<div class="container">
+    <div class="row" style="margin-top:100px">
+
+            <form action="/employee/" method="POST" class="col-md-12 form-horizontal" id="empForm" enctype="multipart/form-data" >
+            <p><span id="message"></span></p>
+            <div class="row">
+                <div class="col-md-6">
+                    {{form.name.label_tag}}
+                    {{form.name}}
+                </div>
+                <div class="col-md-6">
+                    {{form.pan_number.label_tag}}
+                    {{form.pan_number}}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    {{form.age.label_tag}}
+                    {{form.age}}
+                </div>
+                <div class="col-md-6">
+                    {{form.gender.label_tag}}
+                    {{form.gender}}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-12">
+                    {{form.email.label_tag}}
+                    {{form.email}}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    {{form.city.label_tag}}
+                    {{form.city}}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col text-right">
+                    <input id="add_record" type="button" class="btn btn-primary" value="Add">
+                    <input id="find_record" type="button" class="btn btn-primary" value="Search">
+                </div>
+            </div>
+        </form>
+    </div>
+    <hr>
+    <div class="row">
+        <div class="col-md-12 search-results">
+            <table id='empTable' class='display dataTable'>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>PAN Number</th>
+                        <th>Age</th>
+                        <th>Gender</th>
+                        <th>Email</th>
+                        <th>City</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="container" >
+    <div class="modal fade" id="myModal" role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content" style="width:650px;height:580px;">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+
+                <div class="modal-body">
+
+                    <label for="id_name_edit">Name:</label>
+                    <input type="text" maxlength="10" class="form-control" required="" id="id_name_edit" readonly>
+
+                     <label for="id_pan_edit">PAN:</label>
+                    <input type="text"  maxlength="10" class="form-control" required="" id="id_pan_edit" readonly>
+
+                    <label for="id_age_edit">Age:</label>
+                    <input type="text"  maxlength="10" class="form-control" required="" id="id_age_edit" readonly>
+
+                    <label for="id_gender_edit">Gender:</label>
+                    <input type="text" n maxlength="10" class="form-control" required="" id="id_gender_edit" readonly>
+
+                    <label for="id_email_edit">Email:</label>
+                    <input type="email"  maxlength="254" class="form-control" required="" id="id_email_edit">
+
+                    <label for="id_city_edit">City:</label>
+                    <select  class="form-control" id="id_city_edit">
+                        {% for city_items in cities %}
+                            <option value="{{city_items.id}}">{{city_items.name}}</option>
+                        {% endfor %}
+
+                    </select>
+
+
+                </div>
+
+                <div class="modal-footer">
+                    <button id="final_submit" type="button" class="btn btn-secondary" >Done</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    function validate(data){
+        $("#message").text("").hide();
+        var data = $("#empForm").serialize().split("&");
+        return_data =[];
+        var errors = $("#message").text().toString();
+        for(i=0;i<data.length;i++){
+            var field_data = data[i].split("=")
+            if(field_data[1] == ""){
+                return_data.push('id_'+field_data[0])
+                $('#id_'+field_data[0]).css('border','2px solid red');
+                if (!errors.includes("Fields must not be left blank")){
+                    errors = errors +" Fields must not be left blank"
+                }
+            }
+            else{
+                $('#id_'+field_data[0]).css('border','');
+                if(field_data[0] == "name"){
+                    if(field_data[1].substring(0,3) == "%20" || field_data[1].substring(field_data[1].length-3) == "%20"){
+                        return_data.push('id_'+field_data[0])
+                        $('#id_'+field_data[0]).css('border','2px solid red');
+                        errors = errors +" Name must not have leading and/or trailing spaces"
+                    }
+                    else{
+                        var val =  field_data[1].split("%20")
+                        for(j=0;j<val.length;j++){
+                            if(!/^[a-zA-Z]+$/.test(val[j])){
+                                return_data.push('id_'+field_data[0])
+                                $('#id_'+field_data[0]).css('border','2px solid red');
+                                errors = errors +" Name must contain only alphabets and separating spaces"
+                                break;
+                            }
+                        }
+
+                    }
+                }
+                else if(field_data[0] == "pan_number"){
+                    if(!/^([a-zA-Z]){5}([0-9]){4}([a-zA-Z]){1}?$/.test(field_data[1])){
+                        return_data.push('id_'+field_data[0])
+                        $('#id_'+field_data[0]).css('border','2px solid red');
+                        errors = errors +" PAN number is not valid "
+                    }
+                    else{
+                        $('#id_'+field_data[0]).css('border','');
+
+
+                    }
+                }
+                else if(field_data[0] == "age"){
+                    if(!/^\d+$/.test(field_data[1])){
+                        return_data.push('id_'+field_data[0])
+                        $('#id_'+field_data[0]).css('border','2px solid red');
+                        errors = errors +" Age must be a number "
+                    }
+                    else if(parseInt(field_data[1]) <=0 || parseInt(field_data[1]) > 100 ){
+                        return_data.push('id_'+field_data[0])
+                        $('#id_'+field_data[0]).css('border','2px solid red');
+                        errors = errors +" Age must be between 1 and 100 "
+                    }
+                    else{
+                        $('#id_'+field_data[0]).css('border','');
+
+
+                    }
+                }
+                else if(field_data[0] == "email"){
+                    if(field_data[1].includes("%20")){
+                        return_data.push('id_'+field_data[0])
+                        $('#id_'+field_data[0]).css('border','2px solid red');
+                        errors = errors +" Email must not have spaces "
+                    }
+                    else if(!/(.+)@(.+){2,}\.(.+){2,}/.test(field_data[1].replace("%40","@"))){
+                        console.log(field_data[1])
+                        return_data.push('id_'+field_data[0])
+                        $('#id_'+field_data[0]).css('border','2px solid red');
+                        errors = errors +" Email must be a valid email address"
+                    }
+                    else{
+                        $('#id_'+field_data[0]).css('border','');
+
+
+                    }
+                }
+                 else if(field_data[0] == "city"){
+                    if(field_data[1] == "0"){
+                        return_data.push('id_'+field_data[0])
+                        $('#id_'+field_data[0]).css('border','2px solid red');
+                        errors = errors +" City must be one of the valid choices "
+                    }
+                    else{
+                        $('#id_'+field_data[0]).css('border','');
+
+
+                    }
+                }
+                else if(field_data[0] == "gender"){
+                    if(field_data[1] == "0"){
+                        return_data.push('id_'+field_data[0])
+                        $('#id_'+field_data[0]).css('border','2px solid red');
+                        errors = errors +" Gender must be one of the valid choices "
+                    }
+                    else{
+                        $('#id_'+field_data[0]).css('border','');
+
+                    }
+                }
+
+            }
+        }
+        if(return_data.length == 0){
+            $("#message").text("").css('color','red').hide();
+            return true;
+        }
+        else{
+            $("#message").text(errors).css('color','red').show();
+            return false;
+        }
+
+    }
+    if ('{{error}}'){
+        $('#message')
+        .text('{{message}}')
+        .css('color','red')
+        .show()
+    }
+    else{
+        $('#message')
+        .text('{{message}}')
+        .css('color','green')
+        .show({duration: 0, queue: true})
+        .delay(3000)
+        .hide({duration: 0, queue: true})
+    }
+
+    $(document).ready(function(){
+        $('#add_record').click(function(){
+            if(validate() == true){
+                $('#empForm').submit();
+            }
+            else{
+                console.log("errors found")
+            }
+        });
+
+        $('#find_record').click(function(){
+            var name = $('#id_name').val().toString()
+            var age = $('#id_age').val().toString()
+            var pan = $('#id_pan_number').val().toString()
+            var gender = $('#id_gender').val().toString()
+            var email = $('#id_email').val().toString()
+            var city = $('#id_city').val().toString()
+            var dataToPost = {};
+            if(name.trim().length!=0){
+                dataToPost["name__icontains"]=name;
+            }
+            if(age.trim().length!=0){
+                dataToPost["age"]=age;
+            }
+            if(email.trim().length!=0){
+                dataToPost["email__icontains"]=email;
+            }
+            if(gender!="0"){
+                dataToPost["gender_id"]=gender;
+            }
+            if(pan.trim().length!=0){
+                dataToPost["pan_number__icontains"]=pan;
+            }
+            if(city!="0"){
+                dataToPost["city_id"]=city;
+            }
+            $.ajax({
+                type: 'post',
+                url: '/employee/generic_search/',
+                data: JSON.stringify(dataToPost),
+                contentType: "application/json;charset=utf-8",
+                success: function (response) {
+                    var html = "<table id='empTable' class='display dataTable'><thead><tr><th>Name</th><th>PAN Number</th>"
+                    html = html + "<th>Age</th><th>Gender</th><th>Email</th><th>City</th><th>Action</th></tr></thead></table>"
+                    $('.search-results').empty().append(html);
+                    console.log(response)
+                    var table_options = {
+                        data: response.result,
+                        "fnDrawCallback": function (oSettings) {
+                           $('#empTable tbody tr td.gen').each(function(){
+                                {% for gender in genders %}
+                                if($(this).text().toString() == '{{gender.id}}'.toString()){
+                                    $(this).text('{{gender.get_gender_display}}'.toString())
+                                 }
+                                {% endfor %}
+                            });
+                            $('#empTable tbody tr td.cit').each(function(){
+                                {% for city in cities %}
+                                if($(this).text().toString() == '{{city.id}}'.toString()){
+                                    $(this).text('{{city.name}}'.toString())
+                                 }
+                                {% endfor %}
+                            });
+                        },
+                        'destroy': true,
+                        'columnDefs':[{
+                            'targets': 2,
+                            'searchable':true,
+                            'orderable':false,
+                            'className': 'dt-body-center',
+                            'render': function (data, type, full, meta){
+                                return data;
+                            }
+                        },
+                        {
+                            'targets': 1,
+                            'searchable':true,
+                            'orderable':true,
+                            'className': 'dt-body-center',
+                            'render': function (data, type, full, meta){
+
+                                return data;
+                            }
+                            },
+                            {
+                                'targets': 0,
+                                'searchable':true,
+                                'orderable':true,
+                                'className': 'dt-body-center',
+                                'render': function (data, type, full, meta){
+
+                                    return data;
+                                }
+                            },
+                            {
+                                'targets': 5,
+                                'searchable':true,
+                                'orderable':true,
+                                'className': 'dt-body-center cit',
+                                'render': function (data, type, full, meta){
+
+                                    return data;
+                                }
+                            },
+                            {
+                                'targets': 4,
+                                'searchable':true,
+                                'orderable':false,
+                                'className': 'dt-body-center',
+                                'render': function (data, type, full, meta){
+
+                                    return data;
+                                }
+                            },
+                            {
+                                'targets': 3,
+                                'searchable':true,
+                                'orderable':false,
+                                'className': 'dt-body-center gen',
+                                'render': function (data, type, full, meta){
+
+                                    return data;
+                                }
+                            },
+                            {
+                                'targets': 6,
+                                "data":null,
+                                //"defaultContent":"<button id='updateRecord'>Edit</button> <button id='deleteRecord'>Delete</button>"
+                                'render': function (data, type, full, meta){
+
+                                    return "<button class='updateRecord'>Edit</button> <button class='deleteRecord'>Delete</button>";
+                                }
+                            }
+                        ],
+
+                        "columns": [
+                            { data: 'name' },
+                            { data: 'pan_number' },
+                            { data: 'age' },
+                            { data: 'gender' },
+                            { data: 'email' },
+                            { data: 'city' },
+
+                        ]
+                    };
+                    var oTable = $("#empTable").DataTable(table_options)
+                },
+                'error': {
+
+                }
+            });
+        });
+    });
+</script>
+
+<script>
+        initialize('');
+        function initialize(newUrl){
+            var url = $("#empForm").serialize();
+            var table= $('#empTable').DataTable({
+                "fnDrawCallback": function (oSettings) {
+                   $('#empTable tbody tr td.gen').each(function(){
+                        {% for gender in genders %}
+                        if($(this).text().toString() == '{{gender.id}}'.toString()){
+                            $(this).text('{{gender.get_gender_display}}'.toString())
+                         }
+                        {% endfor %}
+                    });
+                    $('#empTable tbody tr td.cit').each(function(){
+                        {% for city in cities %}
+                        if($(this).text().toString() == '{{city.id}}'.toString()){
+                            $(this).text('{{city.name}}'.toString())
+                         }
+                        {% endfor %}
+                    });
+                },
+                'destroy': true,
+                'processing': true,
+                'serverSide': true,
+                'serverMethod': 'post',
+                'ajax': {
+                    'url':'/employee/api-list/'+url,
+                    'dataType': 'json',
+                    'dataSrc': 'results'
+                },
+                'columnDefs':[{
+                        'targets': 2,
+                        'searchable':true,
+                        'orderable':false,
+                        'className': 'dt-body-center',
+                        'render': function (data, type, full, meta){
+                            return data;
+                        }
+                    },
+                    {
+                        'targets': 1,
+                        'searchable':true,
+                        'orderable':true,
+                        'className': 'dt-body-center',
+                        'render': function (data, type, full, meta){
+
+                            return data;
+                        }
+                    },
+                    {
+                        'targets': 0,
+                        'searchable':true,
+                        'orderable':true,
+                        'className': 'dt-body-center',
+                        'render': function (data, type, full, meta){
+
+                            return data;
+                        }
+                    },
+                    {
+                        'targets': 5,
+                        'searchable':true,
+                        'orderable':true,
+                        'className': 'dt-body-center cit',
+                        'render': function (data, type, full, meta){
+
+                            return data;
+                        }
+                    },
+                    {
+                        'targets': 4,
+                        'searchable':true,
+                        'orderable':false,
+                        'className': 'dt-body-center',
+                        'render': function (data, type, full, meta){
+
+                            return data;
+                        }
+                    },
+                    {
+                        'targets': 3,
+                        'searchable':true,
+                        'orderable':false,
+                        'className': 'dt-body-center gen',
+                        'render': function (data, type, full, meta){
+
+                            return data;
+                        }
+                    },
+                    {
+                        'targets': 6,
+                        "data":null,
+                        //"defaultContent":"<button id='updateRecord'>Edit</button> <button id='deleteRecord'>Delete</button>"
+                        'render': function (data, type, full, meta){
+
+                            return "<button class='updateRecord'>Edit</button> <button class='deleteRecord'>Delete</button>";
+                        }
+                    }
+                ],
+                'columns': [
+                    { data: 'name' },
+                    { data: 'pan_number' },
+                    { data: 'age' },
+                    { data: 'gender' },
+                    { data: 'email' },
+                    { data: 'city' },
+
+                ]
+            });
+        }
+
+</script>
+<script>
+    $(document).ready(function(){
+        $(document).on("click","#empTable tbody tr td button.updateRecord",function(){
+            var employee = $(this).parent().parent().children('td').eq(0).text();
+            var pan = $(this).parent().parent().children('td').eq(1).text();
+            var age = $(this).parent().parent().children('td').eq(2).text();
+            var gender = $(this).parent().parent().children('td').eq(3).text();
+            var email  = $(this).parent().parent().children('td').eq(4).text();
+            var city = $(this).parent().parent().children('td').eq(5).text();
+            $("#id_pan_edit").val(pan.toString());
+            $("#id_name_edit").val(employee.toString());
+            $("#id_age_edit").val(age.toString());
+            $("#id_gender_edit").val(gender.toString());
+            $("#id_email_edit").val(email.toString());
+            $("#id_city_edit").val(city.toString());
+            $("#myModal").modal('show')
+        });
+        $(document).on("click","#empTable tbody tr td button.deleteRecord",function(){
+            var pan = $(this).parent().parent().children('td').eq(1).text();
+            console.log(pan)
+            $.ajax({
+                type: 'post',
+                url: '/employee/delete/',
+                data: JSON.stringify({'pan_number':pan.toString()}),
+                contentType: "application/json;charset=utf-8",
+                success: function (response) {
+                    if(response.data == "Success"){
+                        location.reload()
+                    }
+                }
+            });
+        });
+
+        $("#final_submit").click(function(){
+            var pan = $("#id_pan_edit").val().toString()
+            var email = $("#id_email_edit").val().toString()
+            var city_id = $("#id_city_edit").val()
+            var errors = ""
+            if(!/(.+)@(.+){2,}\.(.+){2,}/.test(email)){
+                $("#id_email_edit").css('border','2px solid red');
+                errors = errors +" Email must be a valid email address"
+            }
+            else{
+                $("#id_email_edit").css('border','');
+            }
+            if(city_id == null){
+                $("#id_city_edit").css('border','2px solid red');
+                errors = errors +" Please choose a city "
+            }
+            else{
+                city_id = city_id.toString()
+                $("#id_city_edit").css('border','');
+            }
+            if (errors.length == 0){
+
+                 $.ajax({
+                    type: 'post',
+                    url: '/employee/change/',
+                    data: JSON.stringify({'pan_number':pan,'email':email,'city':city_id}),
+                    contentType: "application/json;charset=utf-8",
+                    success: function (response) {
+                        if(response.data == "Success"){
+                            location.reload()
+                        }
+                    }
+                });
+            }
+        });
+
+    });
+</script>
+</body>
+</html>
+
+
+
